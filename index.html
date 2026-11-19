@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>RAMMS GROUPS // AI BIOMETRIC MOOD & VOICE ANALYZER</title>
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#070B12">
+
+  <!-- MediaPipe Face Mesh (468 3D Facial Micro-Expression Landmarks) -->
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js" crossorigin="anonymous"></script>
+
+  <style>
+    :root {
+      --bg-dark: #070B12;
+      --panel-bg: rgba(13, 19, 31, 0.92);
+      --border-subtle: rgba(56, 189, 248, 0.28);
+      --accent-cyan: #38BDF8;
+      --accent-green: #10B981;
+      --accent-amber: #F59E0B;
+      --accent-red: #EF4444;
+      --accent-purple: #A855F7;
+      --text-primary: #F1F5F9;
+      --text-secondary: #94A3B8;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: Consolas, "Courier New", monospace;
+      user-select: none;
+    }
+
+    body, html {
+      width: 100vw;
+      height: 100dvh;
+      overflow: hidden;
+      background-color: var(--bg-dark);
+      color: var(--text-primary);
+    }
+
+    #appStage {
+      position: relative;
+      width: 100vw;
+      height: 100dvh;
+      overflow: hidden;
+      background-color: #090E17;
+      background-image:
+        linear-gradient(rgba(56, 189, 248, 0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(56, 189, 248, 0.04) 1px, transparent 1px);
+      background-size: 36px 36px;
+    }
+
+    #camFeed {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      z-index: 1;
+    }
+
+    #camFeed.mirrored {
+      transform: scaleX(-1);
+    }
+
+    #hudOverlay {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 2;
+      pointer-events: none;
+    }
+
+    /* Top Telemetry Header */
+    .top-bar {
+      position: absolute;
+      top: 12px;
+      left: 14px;
+      right: 14px;
+      z-index: 20;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+      background: var(--panel-bg);
+      border: 1px solid var(--border-subtle);
+      padding: 9px 14px;
+      border-radius: 8px;
+    }
+
+    .brand-title {
+      font-size: 13px;
+      font-weight: bold;
+      color: var(--accent-cyan);
+      letter-spacing: 0.6px;
+    }
+
+    .brand-title span {
+      color: var(--text-secondary);
+      font-weight: normal;
+      font-size: 11px;
+    }
+
+    .status-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .badge {
+      font-size: 11px;
+      font-weight: bold;
+      padding: 4px 9px;
+      border-radius: 4px;
+      background: #162032;
+      border: 1px solid #2A3A54;
+      color: var(--accent-green);
+    }
+
+    /* Right Side Live Biometric Metrics Card */
+    .metrics-panel {
+      position: absolute;
+      right: 14px;
+      top: 68px;
+      width: 245px;
+      z-index: 20;
+      background: var(--panel-bg);
+      border: 1px solid var(--border-subtle);
+      border-radius: 8px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .panel-header {
+      font-size: 10px;
+      font-weight: bold;
+      color: var(--accent-amber);
+      letter-spacing: 1px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      padding-bottom: 5px;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .voice-dot {
+      color: var(--accent-green);
+    }
+
+    .mood-readout {
+      text-align: center;
+      padding: 8px 6px;
+      border-radius: 6px;
+      background: rgba(56, 189, 248, 0.08);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+    }
+
+    .mood-main {
+      font-size: 15px;
+      font-weight: 900;
+      letter-spacing: 0.8px;
+      color: var(--accent-green);
+    }
+
+    .mood-sub {
+      font-size: 10px;
+      color: var(--text-secondary);
+      margin-top: 2px;
+    }
+
+    .bar-group {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .bar-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 10px;
+      color: var(--text-secondary);
+    }
+
+    .bar-track {
+      width: 100%;
+      height: 6px;
+      background: #1E293B;
+      border-radius: 3px;
+      overflow: hidden;
+    }
+
+    .bar-fill {
+      height: 100%;
+      width: 0%;
+      transition: width 0.2s ease, background-color 0.2s ease;
+    }
+
+    /* Bottom Verdict & Camera Controls */
+    .bottom-bar {
+      position: absolute;
+      bottom: 12px;
+      left: 14px;
+      right: 14px;
+      z-index: 20;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+      background: var(--panel-bg);
+      border: 1px solid var(--border-subtle);
+      padding: 9px 14px;
+      border-radius: 8px;
+    }
+
+    .verdict-box {
+      font-size: 11px;
+      font-weight: bold;
+      color: var(--text-primary);
+    }
+
+    .verdict-box span {
+      color: var(--accent-green);
+    }
+
+    .btn-row {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    button {
+      background: #1E293B;
+      border: 1px solid #334155;
+      color: #F8FAFC;
+      padding: 6px 10px;
+      border-radius: 5px;
+      font-size: 10px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    button.primary {
+      background: #0284C7;
+      border-color: #38BDF8;
+    }
+
+    button.voice-active {
+      background: #065F46;
+      border-color: #10B981;
+      color: #ECFDF5;
+    }
+
+    @media (max-width: 680px) {
+      .metrics-panel {
+        width: 190px;
+        top: 62px;
+        right: 10px;
+        padding: 9px;
+      }
+      .mood-main { font-size: 13px; }
+    }
+  </style>
+</head>
+<body>
+
+  <div id="appStage">
+    <video id="camFeed" class="mirrored" autoplay playsinline muted></video>
+    <canvas id="hudOverlay"></canvas>
+
+    <!-- Top Header -->
+    <div class="top-bar">
+      <div class="brand-title">RAMMS GROUPS // AI MOOD &amp; VOICE ANALYZER <span>v2.5 Live Audio</span></div>
+      <div class="status-row">
+        <span id="sysStatus" class="badge">INITIALIZING...</span>
+        <span id="fpsCounter" class="badge" style="color:#38BDF8;">0 FPS</span>
+      </div>
+    </div>
+
+    <!-- Live Biometric Telemetry Card -->
+    <div class="metrics-panel">
+      <div class="panel-header">
+        <span>FACIAL TELEMETRY</span>
+        <span id="voiceIndicator" class="voice-dot">🔊 VOICE READY</span>
+      </div>
+
+      <div class="mood-readout" id="moodCard">
+        <div class="mood-main" id="moodTitle">SCANNING...</div>
+        <div class="mood-sub" id="moodDesc">Align face in frame</div>
+      </div>
+
+      <div class="bar-group">
+        <div class="bar-label"><span>POSITIVITY / SMILE</span><span id="valHappy">0%</span></div>
+        <div class="bar-track"><div class="bar-fill" id="barHappy" style="background:#10B981;"></div></div>
+      </div>
+
+      <div class="bar-group">
+        <div class="bar-label"><span>COOL &amp; CALM</span><span id="valCalm">0%</span></div>
+        <div class="bar-track"><div class="bar-fill" id="barCalm" style="background:#38BDF8;"></div></div>
+      </div>
+
+      <div class="bar-group">
+        <div class="bar-label"><span>STRESS / TENSION</span><span id="valStress">0%</span></div>
+        <div class="bar-track"><div class="bar-fill" id="barStress" style="background:#EF4444;"></div></div>
+      </div>
+
+      <div class="bar-group">
+        <div class="bar-label"><span>SURPRISE / ALERT</span><span id="valSurprise">0%</span></div>
+        <div class="bar-track"><div class="bar-fill" id="barSurprise" style="background:#F59E0B;"></div></div>
+      </div>
+    </div>
+
+    <!-- Bottom Verdict & Controls -->
+    <div class="bottom-bar">
+      <div class="verdict-box">AI VOICE REPORT: <span id="verdictText">WAITING FOR SUBJECT...</span></div>
+      <div class="btn-row">
+        <button class="primary" onclick="startCamera()">START CAM</button>
+        <button id="btnVoice" class="voice-active" onclick="toggleVoice()">VOICE: ON</button>
+        <button onclick="speakCurrentReport(true)">SPEAK NOW</button>
+        <button onclick="flipCamera()">SWITCH CAM</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+  const video = document.getElementById('camFeed');
+  const canvas = document.getElementById('hudOverlay');
+  const ctx = canvas.getContext('2d');
+
+  const sysStatus = document.getElementById('sysStatus');
+  const fpsCounter = document.getElementById('fpsCounter');
+  const moodTitle = document.getElementById('moodTitle');
+  const moodDesc = document.getElementById('moodDesc');
+  const moodCard = document.getElementById('moodCard');
+  const verdictText = document.getElementById('verdictText');
+  const voiceIndicator = document.getElementById('voiceIndicator');
+
+  const barHappy = document.getElementById('barHappy');
+  const valHappy = document.getElementById('valHappy');
+  const barCalm = document.getElementById('barCalm');
+  const valCalm = document.getElementById('valCalm');
+  const barStress = document.getElementById('barStress');
+  const valStress = document.getElementById('valStress');
+  const barSurprise = document.getElementById('barSurprise');
+  const valSurprise = document.getElementById('valSurprise');
+
+  let W = window.innerWidth;
+  let H = window.innerHeight;
+  let useFrontCam = true;
+
+  // AI Voice Synthesis State
+  let voiceEnabled = true;
+  let currentMoodKey = 'NONE';
+  let currentVoiceScript = 'System active. Scanning for human subject.';
+  let lastSpokenMood = '';
+  let lastSpokenTime = 0;
+
+  function resizeCanvas() {
+    W = window.innerWidth;
+    H = window.innerHeight;
+    canvas.width = W;
+    canvas.height = H;
+  }
+  window.addEventListener('resize', resizeCanvas);
+  resizeCanvas();
+
+  // Speaks the live assessment in clear English
+  function speakCurrentReport(force = false) {
+    if (!voiceEnabled && !force) return;
+    if (!('speechSynthesis' in window)) return;
+
+    const now = performance.now();
+    // Prevent overlapping spam unless forced by button or mood changed after 3.5s
+    if (!force) {
+      if (window.speechSynthesis.speaking) return;
+      if (currentMoodKey === lastSpokenMood && (now - lastSpokenTime) < 7000) return;
+      if ((now - lastSpokenTime) < 3200) return;
+    } else {
+      window.speechSynthesis.cancel();
+    }
+
+    const utterance = new SpeechSynthesisUtterance(currentVoiceScript);
+    utterance.lang = 'en-US';
+    utterance.rate = 0.98;
+    utterance.pitch = 1.02;
+
+    // Pick a crisp English voice if available
+    const voices = window.speechSynthesis.getVoices();
+    const preferred = voices.find(v => v.lang.includes('en') && (v.name.includes('Google') || v.name.includes('Natural') || v.name.includes('English')));
+    if (preferred) utterance.voice = preferred;
+
+    utterance.onstart = () => {
+      voiceIndicator.innerText = '🔊 SPEAKING...';
+      voiceIndicator.style.color = '#38BDF8';
+    };
+    utterance.onend = () => {
+      voiceIndicator.innerText = voiceEnabled ? '🔊 VOICE ON' : '🔇 MUTED';
+      voiceIndicator.style.color = voiceEnabled ? '#10B981' : '#94A3B8';
+    };
+
+    lastSpokenMood = currentMoodKey;
+    lastSpokenTime = now;
+    window.speechSynthesis.speak(utterance);
+  }
+
+  function toggleVoice() {
+    voiceEnabled = !voiceEnabled;
+    const btn = document.getElementById('btnVoice');
+    if (voiceEnabled) {
+      btn.innerText = 'VOICE: ON';
+      btn.classList.add('voice-active');
+      voiceIndicator.innerText = '🔊 VOICE ON';
+      voiceIndicator.style.color = '#10B981';
+      speakCurrentReport(true);
+    } else {
+      window.speechSynthesis.cancel();
+      btn.innerText = 'VOICE: OFF';
+      btn.classList.remove('voice-active');
+      voiceIndicator.innerText = '🔇 MUTED';
+      voiceIndicator.style.color = '#94A3B8';
+    }
+  }
+
+  function flipCamera() {
+    useFrontCam = !useFrontCam;
+    if (useFrontCam) {
+      video.classList.add('mirrored');
+    } else {
+      video.classList.remove('mirrored');
+    }
+    startCamera();
+  }
+
+  function dist2D(a, b) {
+    return Math.hypot(a.x - b.x, a.y - b.y);
+  }
+
+  let sHappy = 0, sCalm = 50, sStress = 0, sSurprise = 0;
+
+  function analyzeFacialMood(lm) {
+    const faceWidth = dist2D(lm[234], lm[454]) || 0.1;
+
+    const mouthWidth = dist2D(lm[61], lm[291]) / faceWidth;
+    const mouthOpen = dist2D(lm[13], lm[14]) / faceWidth;
+    const mouthCenterY = (lm[13].y + lm[14].y) * 0.5;
+    const cornersAvgY = (lm[61].y + lm[291].y) * 0.5;
+    const smileLift = (mouthCenterY - cornersAvgY) / faceWidth;
+
+    const leftEyeOpen = dist2D(lm[159], lm[145]) / faceWidth;
+    const rightEyeOpen = dist2D(lm[386], lm[374]) / faceWidth;
+    const avgEyeOpen = (leftEyeOpen + rightEyeOpen) * 0.5;
+
+    const innerBrowGap = dist2D(lm[107], lm[336]) / faceWidth;
+    const browHeight = ((lm[159].y - lm[105].y) + (lm[386].y - lm[334].y)) * 0.5 / faceWidth;
+
+    let rawHappy = Math.max(0, Math.min(100, ((smileLift + 0.015) * 1450) + ((mouthWidth - 0.36) * 280)));
+    let rawSurprise = Math.max(0, Math.min(100, ((avgEyeOpen - 0.068) * 1800) + ((mouthOpen - 0.05) * 650)));
+    let rawStress = Math.max(0, Math.min(100, ((0.22 - innerBrowGap) * 900) + ((0.095 - browHeight) * 1100) - rawHappy * 0.3));
+    let rawSad = Math.max(0, Math.min(100, ((-smileLift - 0.012) * 1600) + ((0.058 - avgEyeOpen) * 900)));
+
+    let rawCalm = Math.max(15, Math.min(100, 100 - (rawHappy * 0.45 + rawStress * 0.65 + rawSurprise * 0.65 + rawSad * 0.5)));
+
+    sHappy += 0.25 * (rawHappy - sHappy);
+    sCalm += 0.25 * (rawCalm - sCalm);
+    sStress += 0.25 * (rawStress - sStress);
+    sSurprise += 0.25 * (rawSurprise - sSurprise);
+
+    const h = Math.round(sHappy);
+    const c = Math.round(sCalm);
+    const st = Math.round(sStress);
+    const su = Math.round(sSurprise);
+
+    barHappy.style.width = `${h}%`; valHappy.innerText = `${h}%`;
+    barCalm.style.width = `${c}%`; valCalm.innerText = `${c}%`;
+    barStress.style.width = `${st}%`; valStress.innerText = `${st}%`;
+    barSurprise.style.width = `${su}%`; valSurprise.innerText = `${su}%`;
+
+    let moodKey = 'CALM';
+    let label = 'COOL & CALM';
+    let desc = 'Everything looks normal & fine';
+    let color = '#10B981';
+    let verdict = 'SUBJECT IS COOL, CALM & EVERYTHING IS GOOD';
+    let voiceLine = 'Subject detected. Mood is cool and calm. Everything looks completely normal and positive.';
+
+    if (h >= 55 && h >= st && h >= su) {
+      moodKey = 'HAPPY';
+      label = 'HAPPY & POSITIVE';
+      desc = 'Cheerful smile detected';
+      color = '#10B981';
+      verdict = 'SUBJECT IS HAPPY & IN A GREAT MOOD';
+      voiceLine = 'Positive expression detected. The person looks very happy, cheerful, and in a great mood.';
+    } else if (su >= 58) {
+      moodKey = 'SURPRISED';
+      label = 'SURPRISED / ALERT';
+      desc = 'High attention detected';
+      color = '#F59E0B';
+      verdict = 'SUBJECT APPEARS SURPRISED OR ALERT';
+      voiceLine = 'Attention. Surprised expression detected. High alertness observed.';
+    } else if (st >= 52) {
+      moodKey = 'STRESSED';
+      label = 'TENSE / SERIOUS';
+      desc = 'Elevated facial tension';
+      color = '#EF4444';
+      verdict = 'HIGH TENSION OR SERIOUS EXPRESSION';
+      voiceLine = 'Alert. Facial tension detected. The person appears serious or slightly stressed.';
+    } else if (rawSad >= 52) {
+      moodKey = 'TIRED';
+      label = 'LOW ENERGY / TIRED';
+      desc = 'Calm but low energy';
+      color = '#A855F7';
+      verdict = 'SUBJECT APPEARS TIRED OR LOW ENERGY';
+      voiceLine = 'Low energy expression detected. The person looks a bit tired or serious.';
+    }
+
+    currentMoodKey = moodKey;
+    currentVoiceScript = voiceLine;
+
+    moodTitle.innerText = label;
+    moodTitle.style.color = color;
+    moodDesc.innerText = desc;
+    moodCard.style.borderColor = color;
+    verdictText.innerText = verdict;
+    verdictText.style.color = color;
+
+    // Trigger live English AI speech automatically when subject is analyzed
+    speakCurrentReport(false);
+
+    return color;
+  }
+
+  function drawBiometricHUD(lm, accentColor) {
+    let minX = 1, minY = 1, maxX = 0, maxY = 0;
+    for (let i = 0; i < lm.length; i++) {
+      const px = useFrontCam ? (1 - lm[i].x) : lm[i].x;
+      const py = lm[i].y;
+      if (px < minX) minX = px;
+      if (px > maxX) maxX = px;
+      if (py < minY) minY = py;
+      if (py > maxY) maxY = py;
+    }
+
+    const x = minX * W - 16;
+    const y = minY * H - 20;
+    const w = (maxX - minX) * W + 32;
+    const h = (maxY - minY) * H + 36;
+    const corner = 18;
+
+    ctx.strokeStyle = accentColor;
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.moveTo(x, y + corner); ctx.lineTo(x, y); ctx.lineTo(x + corner, y);
+    ctx.moveTo(x + w - corner, y); ctx.lineTo(x + w, y); ctx.lineTo(x + w, y + corner);
+    ctx.moveTo(x, y + h - corner); ctx.lineTo(x, y + h); ctx.lineTo(x + corner, y + h);
+    ctx.moveTo(x + w - corner, y + h); ctx.lineTo(x + w, y + h); ctx.lineTo(x + w, y + h - corner);
+    ctx.stroke();
+
+    ctx.fillStyle = accentColor;
+    for (let i = 0; i < lm.length; i += 4) {
+      const px = (useFrontCam ? (1 - lm[i].x) : lm[i].x) * W;
+      const py = lm[i].y * H;
+      ctx.fillRect(px - 1, py - 1, 2, 2);
+    }
+  }
+
+  let frames = 0;
+  let lastFpsStamp = performance.now();
+
+  function onFaceResults(results) {
+    frames++;
+    const now = performance.now();
+    if (now - lastFpsStamp >= 500) {
+      fpsCounter.innerText = `${Math.round((frames * 1000) / (now - lastFpsStamp))} FPS`;
+      frames = 0;
+      lastFpsStamp = now;
+    }
+
+    ctx.clearRect(0, 0, W, H);
+
+    const faces = results.multiFaceLandmarks || [];
+    if (faces.length === 0) {
+      sysStatus.innerText = 'SCANNING FOR FACE...';
+      moodTitle.innerText = 'NO SUBJECT';
+      moodTitle.style.color = '#94A3B8';
+      moodDesc.innerText = 'Position face in camera';
+      verdictText.innerText = 'NO PERSON DETECTED IN FRAME';
+      verdictText.style.color = '#94A3B8';
+      currentMoodKey = 'NONE';
+      return;
+    }
+
+    sysStatus.innerText = `SUBJECT LOCKED (${faces.length})`;
+    const primaryFace = faces[0];
+    const moodColor = analyzeFacialMood(primaryFace);
+    drawBiometricHUD(primaryFace, moodColor);
+  }
+
+  let faceMeshEngine = null;
+  let loopStarted = false;
+
+  async function startCamera() {
+    // Unlock browser speech synthesis on user tap
+    if ('speechSynthesis' in window) {
+      const unlockUtterance = new SpeechSynthesisUtterance('Biometric voice engine online.');
+      unlockUtterance.lang = 'en-US';
+      window.speechSynthesis.speak(unlockUtterance);
+    }
+
+    sysStatus.innerText = 'OPENING CAMERA...';
+    try {
+      if (video.srcObject) {
+        video.srcObject.getTracks().forEach(t => t.stop());
+      }
+
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: useFrontCam ? 'user' : 'environment',
+          width: { ideal: 640 },
+          height: { ideal: 360 }
+        },
+        audio: false
+      });
+
+      video.srcObject = stream;
+      await video.play();
+      sysStatus.innerText = 'LOADING FACE AI...';
+
+      if (!faceMeshEngine) {
+        faceMeshEngine = new FaceMesh({
+          locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`
+        });
+
+        faceMeshEngine.setOptions({
+          maxNumFaces: 1,
+          refineLandmarks: false,
+          minDetectionConfidence: 0.6,
+          minTrackingConfidence: 0.6
+        });
+
+        faceMeshEngine.onResults(onFaceResults);
+      }
+
+      if (!loopStarted) {
+        loopStarted = true;
+        let busy = false;
+        async function processLoop() {
+          if (!busy && video.readyState >= 2) {
+            busy = true;
+            try {
+              await faceMeshEngine.send({ image: video });
+            } catch (e) {}
+            busy = false;
+          }
+          requestAnimationFrame(processLoop);
+        }
+        requestAnimationFrame(processLoop);
+      }
+    } catch (err) {
+      sysStatus.innerText = 'CAMERA BLOCKED';
+      alert('Camera access blocked! Open in Full-Screen (not split-screen) and Allow Camera permission in Chrome settings.');
+    }
+  }
+
+  window.addEventListener('load', startCamera);
+</script>
+</body>
+</html>
