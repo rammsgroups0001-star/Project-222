@@ -3,12 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>RAMMS GROUPS // AI BIOMETRIC MOOD & VOICE ANALYZER</title>
+  <title>RAMMS GROUPS // AI BIOMETRIC MOOD & BARITONE ANALYZER</title>
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="theme-color" content="#070B12">
 
-  <!-- MediaPipe Face Mesh (468 3D Facial Micro-Expression Landmarks) -->
-  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js" crossorigin="anonymous"></script>
+  <!-- Pinned Stable MediaPipe Face Mesh (Fast CDN for Custom Domains) -->
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4.1633559619/face_mesh.js" crossorigin="anonymous"></script>
 
   <style>
     :root {
@@ -46,10 +46,6 @@
       height: 100dvh;
       overflow: hidden;
       background-color: #090E17;
-      background-image:
-        linear-gradient(rgba(56, 189, 248, 0.04) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(56, 189, 248, 0.04) 1px, transparent 1px);
-      background-size: 36px 36px;
     }
 
     #camFeed {
@@ -74,7 +70,6 @@
       pointer-events: none;
     }
 
-    /* Top Telemetry Header */
     .top-bar {
       position: absolute;
       top: 12px;
@@ -100,8 +95,7 @@
     }
 
     .brand-title span {
-      color: var(--text-secondary);
-      font-weight: normal;
+      color: var(--accent-amber);
       font-size: 11px;
     }
 
@@ -121,7 +115,6 @@
       color: var(--accent-green);
     }
 
-    /* Right Side Live Biometric Metrics Card */
     .metrics-panel {
       position: absolute;
       right: 14px;
@@ -200,7 +193,6 @@
       transition: width 0.2s ease, background-color 0.2s ease;
     }
 
-    /* Bottom Verdict & Camera Controls */
     .bottom-bar {
       position: absolute;
       bottom: 12px;
@@ -273,25 +265,23 @@
     <video id="camFeed" class="mirrored" autoplay playsinline muted></video>
     <canvas id="hudOverlay"></canvas>
 
-    <!-- Top Header -->
     <div class="top-bar">
-      <div class="brand-title">RAMMS GROUPS // AI MOOD &amp; VOICE ANALYZER <span>v2.5 Live Audio</span></div>
+      <div class="brand-title">RAMMS GROUPS // AI MOOD ANALYZER <span>[BARITONE EDITION]</span></div>
       <div class="status-row">
-        <span id="sysStatus" class="badge">INITIALIZING...</span>
+        <span id="sysStatus" class="badge">STARTING...</span>
         <span id="fpsCounter" class="badge" style="color:#38BDF8;">0 FPS</span>
       </div>
     </div>
 
-    <!-- Live Biometric Telemetry Card -->
     <div class="metrics-panel">
       <div class="panel-header">
         <span>FACIAL TELEMETRY</span>
-        <span id="voiceIndicator" class="voice-dot">🔊 VOICE READY</span>
+        <span id="voiceIndicator" class="voice-dot">🎙️ BARITONE ON</span>
       </div>
 
       <div class="mood-readout" id="moodCard">
-        <div class="mood-main" id="moodTitle">SCANNING...</div>
-        <div class="mood-sub" id="moodDesc">Align face in frame</div>
+        <div class="mood-main" id="moodTitle">LOADING AI...</div>
+        <div class="mood-sub" id="moodDesc">Please wait 3 seconds</div>
       </div>
 
       <div class="bar-group">
@@ -315,9 +305,8 @@
       </div>
     </div>
 
-    <!-- Bottom Verdict & Controls -->
     <div class="bottom-bar">
-      <div class="verdict-box">AI VOICE REPORT: <span id="verdictText">WAITING FOR SUBJECT...</span></div>
+      <div class="verdict-box">AI ASSESSMENT: <span id="verdictText">INITIALIZING NEURAL MESH...</span></div>
       <div class="btn-row">
         <button class="primary" onclick="startCamera()">START CAM</button>
         <button id="btnVoice" class="voice-active" onclick="toggleVoice()">VOICE: ON</button>
@@ -353,12 +342,22 @@
   let H = window.innerHeight;
   let useFrontCam = true;
 
-  // AI Voice Synthesis State
   let voiceEnabled = true;
   let currentMoodKey = 'NONE';
-  let currentVoiceScript = 'System active. Scanning for human subject.';
+  let currentVoiceScript = 'Ladies and gentlemen, the biometric scanner is initializing. Please look towards the camera.';
   let lastSpokenMood = '';
   let lastSpokenTime = 0;
+  let cachedVoices = [];
+
+  function loadAvailableVoices() {
+    if ('speechSynthesis' in window) {
+      cachedVoices = window.speechSynthesis.getVoices();
+    }
+  }
+  if ('speechSynthesis' in window) {
+    loadAvailableVoices();
+    window.speechSynthesis.onvoiceschanged = loadAvailableVoices;
+  }
 
   function resizeCanvas() {
     W = window.innerWidth;
@@ -369,37 +368,57 @@
   window.addEventListener('resize', resizeCanvas);
   resizeCanvas();
 
-  // Speaks the live assessment in clear English
+  function selectDeepMaleVoice() {
+    if (!cachedVoices.length) loadAvailableVoices();
+    const maleKeywords = ['male', 'david', 'daniel', 'ravi', 'prabhat', 'george', 'james', 'arthur', 'guy', 'uk english male', 'en-in'];
+    let chosen = cachedVoices.find(v =>
+      (v.lang.toLowerCase().includes('en-in') || v.lang.toLowerCase().includes('en-gb')) &&
+      maleKeywords.some(k => v.name.toLowerCase().includes(k))
+    );
+    if (!chosen) {
+      chosen = cachedVoices.find(v =>
+        v.lang.toLowerCase().startsWith('en') &&
+        maleKeywords.some(k => v.name.toLowerCase().includes(k))
+      );
+    }
+    if (!chosen) {
+      chosen = cachedVoices.find(v => v.lang.toLowerCase().startsWith('en'));
+    }
+    return chosen || null;
+  }
+
   function speakCurrentReport(force = false) {
     if (!voiceEnabled && !force) return;
     if (!('speechSynthesis' in window)) return;
 
     const now = performance.now();
-    // Prevent overlapping spam unless forced by button or mood changed after 3.5s
     if (!force) {
       if (window.speechSynthesis.speaking) return;
-      if (currentMoodKey === lastSpokenMood && (now - lastSpokenTime) < 7000) return;
-      if ((now - lastSpokenTime) < 3200) return;
+      if (currentMoodKey === lastSpokenMood && (now - lastSpokenTime) < 8000) return;
+      if ((now - lastSpokenTime) < 3800) return;
     } else {
       window.speechSynthesis.cancel();
     }
 
     const utterance = new SpeechSynthesisUtterance(currentVoiceScript);
-    utterance.lang = 'en-US';
-    utterance.rate = 0.98;
-    utterance.pitch = 1.02;
+    const baritoneVoice = selectDeepMaleVoice();
+    if (baritoneVoice) {
+      utterance.voice = baritoneVoice;
+      utterance.lang = baritoneVoice.lang;
+    } else {
+      utterance.lang = 'en-IN';
+    }
 
-    // Pick a crisp English voice if available
-    const voices = window.speechSynthesis.getVoices();
-    const preferred = voices.find(v => v.lang.includes('en') && (v.name.includes('Google') || v.name.includes('Natural') || v.name.includes('English')));
-    if (preferred) utterance.voice = preferred;
+    utterance.pitch = 0.62;
+    utterance.rate = 0.86;
+    utterance.volume = 1.0;
 
     utterance.onstart = () => {
-      voiceIndicator.innerText = '🔊 SPEAKING...';
-      voiceIndicator.style.color = '#38BDF8';
+      voiceIndicator.innerText = '🎙️ SPEAKING...';
+      voiceIndicator.style.color = '#F59E0B';
     };
     utterance.onend = () => {
-      voiceIndicator.innerText = voiceEnabled ? '🔊 VOICE ON' : '🔇 MUTED';
+      voiceIndicator.innerText = voiceEnabled ? '🎙️ BARITONE ON' : '🔇 MUTED';
       voiceIndicator.style.color = voiceEnabled ? '#10B981' : '#94A3B8';
     };
 
@@ -414,7 +433,7 @@
     if (voiceEnabled) {
       btn.innerText = 'VOICE: ON';
       btn.classList.add('voice-active');
-      voiceIndicator.innerText = '🔊 VOICE ON';
+      voiceIndicator.innerText = '🎙️ BARITONE ON';
       voiceIndicator.style.color = '#10B981';
       speakCurrentReport(true);
     } else {
@@ -485,7 +504,7 @@
     let desc = 'Everything looks normal & fine';
     let color = '#10B981';
     let verdict = 'SUBJECT IS COOL, CALM & EVERYTHING IS GOOD';
-    let voiceLine = 'Subject detected. Mood is cool and calm. Everything looks completely normal and positive.';
+    let voiceLine = 'Ladies and gentlemen, behold. The subject is completely cool, calm, and composed. Everything is absolutely fine.';
 
     if (h >= 55 && h >= st && h >= su) {
       moodKey = 'HAPPY';
@@ -493,28 +512,28 @@
       desc = 'Cheerful smile detected';
       color = '#10B981';
       verdict = 'SUBJECT IS HAPPY & IN A GREAT MOOD';
-      voiceLine = 'Positive expression detected. The person looks very happy, cheerful, and in a great mood.';
+      voiceLine = 'What a wonderful sight! A radiant smile and pure positive energy. The person is in a magnificent mood!';
     } else if (su >= 58) {
       moodKey = 'SURPRISED';
       label = 'SURPRISED / ALERT';
       desc = 'High attention detected';
       color = '#F59E0B';
       verdict = 'SUBJECT APPEARS SURPRISED OR ALERT';
-      voiceLine = 'Attention. Surprised expression detected. High alertness observed.';
+      voiceLine = 'Attention please! A sudden expression of surprise and heightened alertness has been detected.';
     } else if (st >= 52) {
       moodKey = 'STRESSED';
       label = 'TENSE / SERIOUS';
       desc = 'Elevated facial tension';
       color = '#EF4444';
       verdict = 'HIGH TENSION OR SERIOUS EXPRESSION';
-      voiceLine = 'Alert. Facial tension detected. The person appears serious or slightly stressed.';
+      voiceLine = 'Observe carefully. The brow shows intense focus and seriousness. Take a deep breath and relax.';
     } else if (rawSad >= 52) {
       moodKey = 'TIRED';
       label = 'LOW ENERGY / TIRED';
       desc = 'Calm but low energy';
       color = '#A855F7';
       verdict = 'SUBJECT APPEARS TIRED OR LOW ENERGY';
-      voiceLine = 'Low energy expression detected. The person looks a bit tired or serious.';
+      voiceLine = 'The expression appears calm, yet slightly low on energy. A moment of rest will restore full strength.';
     }
 
     currentMoodKey = moodKey;
@@ -527,7 +546,6 @@
     verdictText.innerText = verdict;
     verdictText.style.color = color;
 
-    // Trigger live English AI speech automatically when subject is analyzed
     speakCurrentReport(false);
 
     return color;
@@ -601,12 +619,46 @@
 
   let faceMeshEngine = null;
   let loopStarted = false;
+  let modelReady = false;
+
+  async function initFaceMeshEngine() {
+    if (faceMeshEngine) return;
+    sysStatus.innerText = 'LOADING WASM AI...';
+
+    if (typeof FaceMesh === 'undefined') {
+      sysStatus.innerText = 'CDN SCRIPT ERROR';
+      verdictText.innerText = 'AI SCRIPT FAILED TO LOAD - CHECK INTERNET';
+      return;
+    }
+
+    faceMeshEngine = new FaceMesh({
+      locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4.1633559619/${file}`
+    });
+
+    faceMeshEngine.setOptions({
+      maxNumFaces: 1,
+      refineLandmarks: false,
+      minDetectionConfidence: 0.5,
+      minTrackingConfidence: 0.5
+    });
+
+    faceMeshEngine.onResults((results) => {
+      modelReady = true;
+      onFaceResults(results);
+    });
+
+    await faceMeshEngine.initialize();
+    modelReady = true;
+    sysStatus.innerText = 'AI ENGINE READY';
+  }
 
   async function startCamera() {
-    // Unlock browser speech synthesis on user tap
     if ('speechSynthesis' in window) {
-      const unlockUtterance = new SpeechSynthesisUtterance('Biometric voice engine online.');
-      unlockUtterance.lang = 'en-US';
+      const unlockUtterance = new SpeechSynthesisUtterance('Ladies and gentlemen, biometric baritone system online.');
+      const v = selectDeepMaleVoice();
+      if (v) unlockUtterance.voice = v;
+      unlockUtterance.pitch = 0.62;
+      unlockUtterance.rate = 0.86;
       window.speechSynthesis.speak(unlockUtterance);
     }
 
@@ -626,33 +678,28 @@
       });
 
       video.srcObject = stream;
+      await new Promise((resolve) => {
+        video.onloadedmetadata = () => {
+          video.width = video.videoWidth || 640;
+          video.height = video.videoHeight || 360;
+          resolve();
+        };
+      });
       await video.play();
-      sysStatus.innerText = 'LOADING FACE AI...';
 
-      if (!faceMeshEngine) {
-        faceMeshEngine = new FaceMesh({
-          locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`
-        });
-
-        faceMeshEngine.setOptions({
-          maxNumFaces: 1,
-          refineLandmarks: false,
-          minDetectionConfidence: 0.6,
-          minTrackingConfidence: 0.6
-        });
-
-        faceMeshEngine.onResults(onFaceResults);
-      }
+      await initFaceMeshEngine();
 
       if (!loopStarted) {
         loopStarted = true;
         let busy = false;
         async function processLoop() {
-          if (!busy && video.readyState >= 2) {
+          if (!busy && faceMeshEngine && video.readyState >= 2 && video.videoWidth > 0) {
             busy = true;
             try {
               await faceMeshEngine.send({ image: video });
-            } catch (e) {}
+            } catch (err) {
+              sysStatus.innerText = 'FRAME RETRY...';
+            }
             busy = false;
           }
           requestAnimationFrame(processLoop);
@@ -660,8 +707,8 @@
         requestAnimationFrame(processLoop);
       }
     } catch (err) {
-      sysStatus.innerText = 'CAMERA BLOCKED';
-      alert('Camera access blocked! Open in Full-Screen (not split-screen) and Allow Camera permission in Chrome settings.');
+      sysStatus.innerText = 'ERROR: ' + (err.name || 'BLOCKED');
+      verdictText.innerText = err.message || 'CAMERA OR AI INIT FAILED';
     }
   }
 
