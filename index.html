@@ -3,23 +3,24 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>RAMMS GROUPS // AI BIOMETRIC MOOD & BARITONE ANALYZER</title>
+  <title>RAMMS GROUPS // REAL-TIME AI EXPRESSION & VOICE ENGINE v3.0</title>
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="theme-color" content="#070B12">
 
-  <!-- Pinned Stable MediaPipe Face Mesh (Fast CDN for Custom Domains) -->
+  <!-- Pinned Stable MediaPipe Face Mesh -->
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4.1633559619/face_mesh.js" crossorigin="anonymous"></script>
 
   <style>
     :root {
       --bg-dark: #070B12;
-      --panel-bg: rgba(13, 19, 31, 0.92);
-      --border-subtle: rgba(56, 189, 248, 0.28);
+      --panel-bg: rgba(11, 17, 29, 0.92);
+      --border-subtle: rgba(56, 189, 248, 0.3);
       --accent-cyan: #38BDF8;
       --accent-green: #10B981;
       --accent-amber: #F59E0B;
       --accent-red: #EF4444;
       --accent-purple: #A855F7;
+      --accent-indigo: #818CF8;
       --text-primary: #F1F5F9;
       --text-secondary: #94A3B8;
     }
@@ -95,7 +96,7 @@
     }
 
     .brand-title span {
-      color: var(--accent-amber);
+      color: var(--accent-green);
       font-size: 11px;
     }
 
@@ -118,16 +119,16 @@
     .metrics-panel {
       position: absolute;
       right: 14px;
-      top: 68px;
-      width: 245px;
+      top: 66px;
+      width: 250px;
       z-index: 20;
       background: var(--panel-bg);
       border: 1px solid var(--border-subtle);
       border-radius: 8px;
-      padding: 12px;
+      padding: 11px;
       display: flex;
       flex-direction: column;
-      gap: 10px;
+      gap: 8px;
     }
 
     .panel-header {
@@ -136,21 +137,17 @@
       color: var(--accent-amber);
       letter-spacing: 1px;
       border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-      padding-bottom: 5px;
+      padding-bottom: 4px;
       display: flex;
       justify-content: space-between;
     }
 
-    .voice-dot {
-      color: var(--accent-green);
-    }
-
     .mood-readout {
       text-align: center;
-      padding: 8px 6px;
+      padding: 7px 6px;
       border-radius: 6px;
       background: rgba(56, 189, 248, 0.08);
-      border: 1px solid rgba(56, 189, 248, 0.3);
+      border: 1px solid rgba(56, 189, 248, 0.35);
     }
 
     .mood-main {
@@ -169,7 +166,7 @@
     .bar-group {
       display: flex;
       flex-direction: column;
-      gap: 4px;
+      gap: 3px;
     }
 
     .bar-label {
@@ -181,7 +178,7 @@
 
     .bar-track {
       width: 100%;
-      height: 6px;
+      height: 5px;
       background: #1E293B;
       border-radius: 3px;
       overflow: hidden;
@@ -190,7 +187,7 @@
     .bar-fill {
       height: 100%;
       width: 0%;
-      transition: width 0.2s ease, background-color 0.2s ease;
+      transition: width 0.12s linear, background-color 0.15s ease;
     }
 
     .bottom-bar {
@@ -250,10 +247,10 @@
 
     @media (max-width: 680px) {
       .metrics-panel {
-        width: 190px;
-        top: 62px;
+        width: 195px;
+        top: 60px;
         right: 10px;
-        padding: 9px;
+        padding: 8px;
       }
       .mood-main { font-size: 13px; }
     }
@@ -266,7 +263,7 @@
     <canvas id="hudOverlay"></canvas>
 
     <div class="top-bar">
-      <div class="brand-title">RAMMS GROUPS // AI MOOD ANALYZER <span>[BARITONE EDITION]</span></div>
+      <div class="brand-title">RAMMS GROUPS // LIVE EXPRESSION AI <span>[v3.0 REAL-TIME]</span></div>
       <div class="status-row">
         <span id="sysStatus" class="badge">STARTING...</span>
         <span id="fpsCounter" class="badge" style="color:#38BDF8;">0 FPS</span>
@@ -275,38 +272,48 @@
 
     <div class="metrics-panel">
       <div class="panel-header">
-        <span>FACIAL TELEMETRY</span>
-        <span id="voiceIndicator" class="voice-dot">🎙️ BARITONE ON</span>
+        <span>LIVE MICRO-SIGNALS</span>
+        <span id="voiceIndicator" style="color:#10B981;">🔊 MALE VOICE ON</span>
       </div>
 
       <div class="mood-readout" id="moodCard">
         <div class="mood-main" id="moodTitle">LOADING AI...</div>
-        <div class="mood-sub" id="moodDesc">Please wait 3 seconds</div>
+        <div class="mood-sub" id="moodDesc">Initializing face mesh</div>
       </div>
 
       <div class="bar-group">
-        <div class="bar-label"><span>POSITIVITY / SMILE</span><span id="valHappy">0%</span></div>
+        <div class="bar-label"><span>HAPPY / SMILING</span><span id="valHappy">0%</span></div>
         <div class="bar-track"><div class="bar-fill" id="barHappy" style="background:#10B981;"></div></div>
       </div>
 
       <div class="bar-group">
-        <div class="bar-label"><span>COOL &amp; CALM</span><span id="valCalm">0%</span></div>
-        <div class="bar-track"><div class="bar-fill" id="barCalm" style="background:#38BDF8;"></div></div>
+        <div class="bar-label"><span>SAD / DOWN</span><span id="valSad">0%</span></div>
+        <div class="bar-track"><div class="bar-fill" id="barSad" style="background:#818CF8;"></div></div>
       </div>
 
       <div class="bar-group">
-        <div class="bar-label"><span>STRESS / TENSION</span><span id="valStress">0%</span></div>
+        <div class="bar-label"><span>SLEEPY / TIRED</span><span id="valSleepy">0%</span></div>
+        <div class="bar-track"><div class="bar-fill" id="barSleepy" style="background:#A855F7;"></div></div>
+      </div>
+
+      <div class="bar-group">
+        <div class="bar-label"><span>CONFUSED / THINKING</span><span id="valConfused">0%</span></div>
+        <div class="bar-track"><div class="bar-fill" id="barConfused" style="background:#38BDF8;"></div></div>
+      </div>
+
+      <div class="bar-group">
+        <div class="bar-label"><span>ANGRY / STRESSED</span><span id="valStress">0%</span></div>
         <div class="bar-track"><div class="bar-fill" id="barStress" style="background:#EF4444;"></div></div>
       </div>
 
       <div class="bar-group">
-        <div class="bar-label"><span>SURPRISE / ALERT</span><span id="valSurprise">0%</span></div>
+        <div class="bar-label"><span>SURPRISED / SHOCKED</span><span id="valSurprise">0%</span></div>
         <div class="bar-track"><div class="bar-fill" id="barSurprise" style="background:#F59E0B;"></div></div>
       </div>
     </div>
 
     <div class="bottom-bar">
-      <div class="verdict-box">AI ASSESSMENT: <span id="verdictText">INITIALIZING NEURAL MESH...</span></div>
+      <div class="verdict-box">LIVE AI REPORT: <span id="verdictText">WAITING FOR SUBJECT...</span></div>
       <div class="btn-row">
         <button class="primary" onclick="startCamera()">START CAM</button>
         <button id="btnVoice" class="voice-active" onclick="toggleVoice()">VOICE: ON</button>
@@ -329,22 +336,21 @@
   const verdictText = document.getElementById('verdictText');
   const voiceIndicator = document.getElementById('voiceIndicator');
 
-  const barHappy = document.getElementById('barHappy');
-  const valHappy = document.getElementById('valHappy');
-  const barCalm = document.getElementById('barCalm');
-  const valCalm = document.getElementById('valCalm');
-  const barStress = document.getElementById('barStress');
-  const valStress = document.getElementById('valStress');
-  const barSurprise = document.getElementById('barSurprise');
-  const valSurprise = document.getElementById('valSurprise');
+  const barHappy = document.getElementById('barHappy'), valHappy = document.getElementById('valHappy');
+  const barSad = document.getElementById('barSad'), valSad = document.getElementById('valSad');
+  const barSleepy = document.getElementById('barSleepy'), valSleepy = document.getElementById('valSleepy');
+  const barConfused = document.getElementById('barConfused'), valConfused = document.getElementById('valConfused');
+  const barStress = document.getElementById('barStress'), valStress = document.getElementById('valStress');
+  const barSurprise = document.getElementById('barSurprise'), valSurprise = document.getElementById('valSurprise');
 
   let W = window.innerWidth;
   let H = window.innerHeight;
   let useFrontCam = true;
 
+  // Fast Male Voice Engine
   let voiceEnabled = true;
   let currentMoodKey = 'NONE';
-  let currentVoiceScript = 'Ladies and gentlemen, the biometric scanner is initializing. Please look towards the camera.';
+  let currentVoiceScript = 'Real-time expression scanner ready.';
   let lastSpokenMood = '';
   let lastSpokenTime = 0;
   let cachedVoices = [];
@@ -368,23 +374,30 @@
   window.addEventListener('resize', resizeCanvas);
   resizeCanvas();
 
-  function selectDeepMaleVoice() {
+  // Select Crisp Male Voice (Avoids slow female default)
+  function selectCrispMaleVoice() {
     if (!cachedVoices.length) loadAvailableVoices();
-    const maleKeywords = ['male', 'david', 'daniel', 'ravi', 'prabhat', 'george', 'james', 'arthur', 'guy', 'uk english male', 'en-in'];
-    let chosen = cachedVoices.find(v =>
-      (v.lang.toLowerCase().includes('en-in') || v.lang.toLowerCase().includes('en-gb')) &&
-      maleKeywords.some(k => v.name.toLowerCase().includes(k))
+    // Explicitly exclude female voice names on Android/Chrome
+    const femaleWords = ['female', 'woman', 'girl', 'samantha', 'victoria', 'zira', 'heera', 'kalpana', 'lekha', 'veena', 'tessa', 'karen', 'moira'];
+    const maleWords = ['male', 'man', 'david', 'daniel', 'ravi', 'prabhat', 'george', 'james', 'arthur', 'guy', 'alex', 'fred', 'tom', 'oliver', 'liam'];
+
+    const englishVoices = cachedVoices.filter(v => v.lang.toLowerCase().startsWith('en'));
+
+    // 1. Direct Male keyword match
+    let chosen = englishVoices.find(v =>
+      maleWords.some(m => v.name.toLowerCase().includes(m)) &&
+      !femaleWords.some(f => v.name.toLowerCase().includes(f))
     );
+
+    // 2. Any English voice that is NOT marked female (e.g., Google UK English Male / en-us-x-iom / en-in-x-end)
     if (!chosen) {
-      chosen = cachedVoices.find(v =>
-        v.lang.toLowerCase().startsWith('en') &&
-        maleKeywords.some(k => v.name.toLowerCase().includes(k))
+      chosen = englishVoices.find(v =>
+        (v.name.toLowerCase().includes('iom') || v.name.toLowerCase().includes('iol') || v.name.toLowerCase().includes('end') || v.name.toLowerCase().includes('ene')) ||
+        !femaleWords.some(f => v.name.toLowerCase().includes(f))
       );
     }
-    if (!chosen) {
-      chosen = cachedVoices.find(v => v.lang.toLowerCase().startsWith('en'));
-    }
-    return chosen || null;
+
+    return chosen || englishVoices[0] || null;
   }
 
   function speakCurrentReport(force = false) {
@@ -392,33 +405,41 @@
     if (!('speechSynthesis' in window)) return;
 
     const now = performance.now();
+    const moodChanged = currentMoodKey !== lastSpokenMood && currentMoodKey !== 'NONE';
+
     if (!force) {
-      if (window.speechSynthesis.speaking) return;
-      if (currentMoodKey === lastSpokenMood && (now - lastSpokenTime) < 8000) return;
-      if ((now - lastSpokenTime) < 3800) return;
+      // Interrupt old speech immediately if expression changed after 1.8 seconds!
+      if (moodChanged && (now - lastSpokenTime) > 1800) {
+        window.speechSynthesis.cancel();
+      } else {
+        if (window.speechSynthesis.speaking) return;
+        if (!moodChanged && (now - lastSpokenTime) < 6000) return;
+        if ((now - lastSpokenTime) < 2200) return;
+      }
     } else {
       window.speechSynthesis.cancel();
     }
 
     const utterance = new SpeechSynthesisUtterance(currentVoiceScript);
-    const baritoneVoice = selectDeepMaleVoice();
-    if (baritoneVoice) {
-      utterance.voice = baritoneVoice;
-      utterance.lang = baritoneVoice.lang;
+    const maleVoice = selectCrispMaleVoice();
+    if (maleVoice) {
+      utterance.voice = maleVoice;
+      utterance.lang = maleVoice.lang;
     } else {
-      utterance.lang = 'en-IN';
+      utterance.lang = 'en-US';
     }
 
-    utterance.pitch = 0.62;
-    utterance.rate = 0.86;
+    // Crisp, energetic, fast male delivery
+    utterance.pitch = 0.90;
+    utterance.rate = 1.14;
     utterance.volume = 1.0;
 
     utterance.onstart = () => {
-      voiceIndicator.innerText = '🎙️ SPEAKING...';
-      voiceIndicator.style.color = '#F59E0B';
+      voiceIndicator.innerText = '🔊 SPEAKING...';
+      voiceIndicator.style.color = '#38BDF8';
     };
     utterance.onend = () => {
-      voiceIndicator.innerText = voiceEnabled ? '🎙️ BARITONE ON' : '🔇 MUTED';
+      voiceIndicator.innerText = voiceEnabled ? '🔊 MALE VOICE ON' : '🔇 MUTED';
       voiceIndicator.style.color = voiceEnabled ? '#10B981' : '#94A3B8';
     };
 
@@ -433,7 +454,7 @@
     if (voiceEnabled) {
       btn.innerText = 'VOICE: ON';
       btn.classList.add('voice-active');
-      voiceIndicator.innerText = '🎙️ BARITONE ON';
+      voiceIndicator.innerText = '🔊 MALE VOICE ON';
       voiceIndicator.style.color = '#10B981';
       speakCurrentReport(true);
     } else {
@@ -459,81 +480,141 @@
     return Math.hypot(a.x - b.x, a.y - b.y);
   }
 
-  let sHappy = 0, sCalm = 50, sStress = 0, sSurprise = 0;
+  // Fast-response smoothed values (alpha = 0.45 for instant real-time reaction)
+  let sHappy = 0, sSad = 0, sSleepy = 0, sConfused = 0, sStress = 0, sSurprise = 0;
 
   function analyzeFacialMood(lm) {
-    const faceWidth = dist2D(lm[234], lm[454]) || 0.1;
+    // Normalize all metrics against inter-ocular distance (outer eye corners: 33 & 263) for high precision
+    const eyeSpan = dist2D(lm[33], lm[263]) || 0.1;
 
-    const mouthWidth = dist2D(lm[61], lm[291]) / faceWidth;
-    const mouthOpen = dist2D(lm[13], lm[14]) / faceWidth;
-    const mouthCenterY = (lm[13].y + lm[14].y) * 0.5;
+    // 1. Mouth Geometry (61 = Left Corner, 291 = Right Corner, 13 = Upper Lip, 14 = Lower Lip)
+    const mouthWidth = dist2D(lm[61], lm[291]) / eyeSpan;
+    const mouthOpen = dist2D(lm[13], lm[14]) / eyeSpan;
+    const lipCenterY = (lm[13].y + lm[14].y) * 0.5;
     const cornersAvgY = (lm[61].y + lm[291].y) * 0.5;
-    const smileLift = (mouthCenterY - cornersAvgY) / faceWidth;
+    // Positive = corners pulled UP (Smile); Negative = corners pulled DOWN (Sad/Frown)
+    const cornerDelta = (lipCenterY - cornersAvgY) / eyeSpan;
 
-    const leftEyeOpen = dist2D(lm[159], lm[145]) / faceWidth;
-    const rightEyeOpen = dist2D(lm[386], lm[374]) / faceWidth;
-    const avgEyeOpen = (leftEyeOpen + rightEyeOpen) * 0.5;
+    // 2. Eye Aspect Ratios (Left: 159-145 / 33-133, Right: 386-374 / 362-263)
+    const leftEyeHeight = dist2D(lm[159], lm[145]);
+    const leftEyeWidth = dist2D(lm[33], lm[133]) || 0.05;
+    const leftEAR = leftEyeHeight / leftEyeWidth;
 
-    const innerBrowGap = dist2D(lm[107], lm[336]) / faceWidth;
-    const browHeight = ((lm[159].y - lm[105].y) + (lm[386].y - lm[334].y)) * 0.5 / faceWidth;
+    const rightEyeHeight = dist2D(lm[386], lm[374]);
+    const rightEyeWidth = dist2D(lm[362], lm[263]) || 0.05;
+    const rightEAR = rightEyeHeight / rightEyeWidth;
+    const avgEAR = (leftEAR + rightEAR) * 0.5;
 
-    let rawHappy = Math.max(0, Math.min(100, ((smileLift + 0.015) * 1450) + ((mouthWidth - 0.36) * 280)));
-    let rawSurprise = Math.max(0, Math.min(100, ((avgEyeOpen - 0.068) * 1800) + ((mouthOpen - 0.05) * 650)));
-    let rawStress = Math.max(0, Math.min(100, ((0.22 - innerBrowGap) * 900) + ((0.095 - browHeight) * 1100) - rawHappy * 0.3));
-    let rawSad = Math.max(0, Math.min(100, ((-smileLift - 0.012) * 1600) + ((0.058 - avgEyeOpen) * 900)));
+    // 3. Eyebrow Compression & Asymmetry (Inner Brows: 107 & 336, Brow-to-Eye: 105-159 & 334-386)
+    const innerBrowGap = dist2D(lm[107], lm[336]) / eyeSpan;
+    const leftBrowLift = (lm[159].y - lm[105].y) / eyeSpan;
+    const rightBrowLift = (lm[386].y - lm[334].y) / eyeSpan;
+    const avgBrowLift = (leftBrowLift + rightBrowLift) * 0.5;
+    const browAsymmetry = Math.abs(leftBrowLift - rightBrowLift);
 
-    let rawCalm = Math.max(15, Math.min(100, 100 - (rawHappy * 0.45 + rawStress * 0.65 + rawSurprise * 0.65 + rawSad * 0.5)));
+    // 4. Head Tilt Angle (Confused / Thinking Gesture)
+    const headTilt = Math.abs(lm[33].y - lm[263].y) / eyeSpan;
 
-    sHappy += 0.25 * (rawHappy - sHappy);
-    sCalm += 0.25 * (rawCalm - sCalm);
-    sStress += 0.25 * (rawStress - sStress);
-    sSurprise += 0.25 * (rawSurprise - sSurprise);
+    // --- ZERO-BIAS REAL-TIME EXPRESSION SCORING (0 to 100) ---
+
+    // HAPPY: Only triggers when mouth corners visibly lift upward (> 0.025) or wide teeth smile
+    let rawHappy = 0;
+    if (cornerDelta > 0.022 || mouthWidth > 0.64) {
+      rawHappy = ((cornerDelta - 0.018) * 1400) + Math.max(0, (mouthWidth - 0.60) * 450);
+    }
+
+    // SAD / UPSET: Triggers when mouth corners droop downward (< -0.012) or inner brows pull up with drooping mouth
+    let rawSad = 0;
+    if (cornerDelta < -0.010) {
+      rawSad = ((-cornerDelta - 0.008) * 1850) + Math.max(0, (0.24 - avgEAR) * 250);
+    }
+
+    // SLEEPY / DROWSY: Triggers when eyelids droop (avgEAR < 0.21) without smiling, or big yawn (mouthOpen > 0.35 + low eyes)
+    let rawSleepy = 0;
+    if (avgEAR < 0.215 && rawHappy < 35) {
+      rawSleepy = ((0.225 - avgEAR) * 1250);
+    }
+    if (mouthOpen > 0.32 && avgEAR < 0.23) {
+      rawSleepy += 45; // Yawning detection
+    }
+
+    // CONFUSED / THINKING: Head tilted (> 0.11) OR one eyebrow raised higher than the other (> 0.032)
+    let rawConfused = 0;
+    if (headTilt > 0.10 || browAsymmetry > 0.028) {
+      rawConfused = Math.max(0, (headTilt - 0.09) * 650) + Math.max(0, (browAsymmetry - 0.025) * 1600);
+    }
+
+    // ANGRY / STRESSED: Eyebrows furrowed together (innerBrowGap < 0.33) and pressed down (avgBrowLift < 0.145)
+    let rawStress = 0;
+    if (innerBrowGap < 0.34 || avgBrowLift < 0.145) {
+      rawStress = Math.max(0, (0.35 - innerBrowGap) * 950) + Math.max(0, (0.15 - avgBrowLift) * 1100) - (rawHappy * 0.4);
+    }
+
+    // SURPRISED: Wide open eyes (avgEAR > 0.31) + open mouth (mouthOpen > 0.18)
+    let rawSurprise = 0;
+    if (avgEAR > 0.30 || mouthOpen > 0.22) {
+      rawSurprise = Math.max(0, (avgEAR - 0.29) * 1100) + Math.max(0, (mouthOpen - 0.16) * 420);
+    }
+
+    // Clamp 0..100
+    rawHappy = Math.max(0, Math.min(100, rawHappy));
+    rawSad = Math.max(0, Math.min(100, rawSad));
+    rawSleepy = Math.max(0, Math.min(100, rawSleepy));
+    rawConfused = Math.max(0, Math.min(100, rawConfused));
+    rawStress = Math.max(0, Math.min(100, rawStress));
+    rawSurprise = Math.max(0, Math.min(100, rawSurprise));
+
+    // Fast Real-Time Smoothing (alpha = 0.45)
+    const alpha = 0.45;
+    sHappy += alpha * (rawHappy - sHappy);
+    sSad += alpha * (rawSad - sSad);
+    sSleepy += alpha * (rawSleepy - sSleepy);
+    sConfused += alpha * (rawConfused - sConfused);
+    sStress += alpha * (rawStress - sStress);
+    sSurprise += alpha * (rawSurprise - sSurprise);
 
     const h = Math.round(sHappy);
-    const c = Math.round(sCalm);
+    const sa = Math.round(sSad);
+    const sl = Math.round(sSleepy);
+    const co = Math.round(sConfused);
     const st = Math.round(sStress);
     const su = Math.round(sSurprise);
 
+    // Update Telemetry Bars
     barHappy.style.width = `${h}%`; valHappy.innerText = `${h}%`;
-    barCalm.style.width = `${c}%`; valCalm.innerText = `${c}%`;
+    barSad.style.width = `${sa}%`; valSad.innerText = `${sa}%`;
+    barSleepy.style.width = `${sl}%`; valSleepy.innerText = `${sl}%`;
+    barConfused.style.width = `${co}%`; valConfused.innerText = `${co}%`;
     barStress.style.width = `${st}%`; valStress.innerText = `${st}%`;
     barSurprise.style.width = `${su}%`; valSurprise.innerText = `${su}%`;
 
+    // Find Dominant Emotion (Threshold = 42%)
+    const emotions = [
+      { key: 'HAPPY', val: h, label: 'HAPPY & SMILING', desc: 'Positive smile detected', color: '#10B981', verdict: 'SUBJECT IS HAPPY & SMILING', voice: 'He looks very happy and smiling right now. Great positive energy!' },
+      { key: 'SAD', val: sa, label: 'SAD / UPSET', desc: 'Downward lip expression', color: '#818CF8', verdict: 'SUBJECT APPEARS SAD OR UPSET', voice: 'The person looks sad or a bit upset right now.' },
+      { key: 'SLEEPY', val: sl, label: 'SLEEPY / DROWSY', desc: 'Heavy eyelids / fatigue', color: '#A855F7', verdict: 'SUBJECT LOOKS SLEEPY OR TIRED', voice: 'He looks sleepy and tired. Heavy eyelids detected.' },
+      { key: 'CONFUSED', val: co, label: 'CONFUSED / THINKING', desc: 'Head tilt / brow asymmetry', color: '#38BDF8', verdict: 'SUBJECT SEEMS CONFUSED OR THINKING', voice: 'The person looks confused or deeply thinking about something.' },
+      { key: 'STRESSED', val: st, label: 'ANGRY / STRESSED', desc: 'Furrowed brow tension', color: '#EF4444', verdict: 'SUBJECT APPEARS ANGRY OR TENSE', voice: 'Alert! He looks serious, stressed, or slightly angry.' },
+      { key: 'SURPRISED', val: su, label: 'SURPRISED / SHOCKED', desc: 'Wide eyes & open mouth', color: '#F59E0B', verdict: 'SUBJECT IS SURPRISED OR SHOCKED', voice: 'Whoa! He looks completely surprised and shocked!' }
+    ];
+
+    emotions.sort((a, b) => b.val - a.val);
+    const top = emotions[0];
+
     let moodKey = 'CALM';
     let label = 'COOL & CALM';
-    let desc = 'Everything looks normal & fine';
+    let desc = 'Neutral & relaxed face';
     let color = '#10B981';
-    let verdict = 'SUBJECT IS COOL, CALM & EVERYTHING IS GOOD';
-    let voiceLine = 'Ladies and gentlemen, behold. The subject is completely cool, calm, and composed. Everything is absolutely fine.';
+    let verdict = 'SUBJECT IS COOL, CALM & RELAXED';
+    let voiceLine = 'He looks completely cool, calm, and normal.';
 
-    if (h >= 55 && h >= st && h >= su) {
-      moodKey = 'HAPPY';
-      label = 'HAPPY & POSITIVE';
-      desc = 'Cheerful smile detected';
-      color = '#10B981';
-      verdict = 'SUBJECT IS HAPPY & IN A GREAT MOOD';
-      voiceLine = 'What a wonderful sight! A radiant smile and pure positive energy. The person is in a magnificent mood!';
-    } else if (su >= 58) {
-      moodKey = 'SURPRISED';
-      label = 'SURPRISED / ALERT';
-      desc = 'High attention detected';
-      color = '#F59E0B';
-      verdict = 'SUBJECT APPEARS SURPRISED OR ALERT';
-      voiceLine = 'Attention please! A sudden expression of surprise and heightened alertness has been detected.';
-    } else if (st >= 52) {
-      moodKey = 'STRESSED';
-      label = 'TENSE / SERIOUS';
-      desc = 'Elevated facial tension';
-      color = '#EF4444';
-      verdict = 'HIGH TENSION OR SERIOUS EXPRESSION';
-      voiceLine = 'Observe carefully. The brow shows intense focus and seriousness. Take a deep breath and relax.';
-    } else if (rawSad >= 52) {
-      moodKey = 'TIRED';
-      label = 'LOW ENERGY / TIRED';
-      desc = 'Calm but low energy';
-      color = '#A855F7';
-      verdict = 'SUBJECT APPEARS TIRED OR LOW ENERGY';
-      voiceLine = 'The expression appears calm, yet slightly low on energy. A moment of rest will restore full strength.';
+    if (top.val >= 42) {
+      moodKey = top.key;
+      label = top.label;
+      desc = `${top.desc} (${top.val}%)`;
+      color = top.color;
+      verdict = `${top.verdict} (${top.val}%)`;
+      voiceLine = top.voice;
     }
 
     currentMoodKey = moodKey;
@@ -611,7 +692,7 @@
       return;
     }
 
-    sysStatus.innerText = `SUBJECT LOCKED (${faces.length})`;
+    sysStatus.innerText = `LIVE TRACKING (${faces.length})`;
     const primaryFace = faces[0];
     const moodColor = analyzeFacialMood(primaryFace);
     drawBiometricHUD(primaryFace, moodColor);
@@ -619,17 +700,10 @@
 
   let faceMeshEngine = null;
   let loopStarted = false;
-  let modelReady = false;
 
   async function initFaceMeshEngine() {
     if (faceMeshEngine) return;
     sysStatus.innerText = 'LOADING WASM AI...';
-
-    if (typeof FaceMesh === 'undefined') {
-      sysStatus.innerText = 'CDN SCRIPT ERROR';
-      verdictText.innerText = 'AI SCRIPT FAILED TO LOAD - CHECK INTERNET';
-      return;
-    }
 
     faceMeshEngine = new FaceMesh({
       locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4.1633559619/${file}`
@@ -642,23 +716,18 @@
       minTrackingConfidence: 0.5
     });
 
-    faceMeshEngine.onResults((results) => {
-      modelReady = true;
-      onFaceResults(results);
-    });
-
+    faceMeshEngine.onResults(onFaceResults);
     await faceMeshEngine.initialize();
-    modelReady = true;
     sysStatus.innerText = 'AI ENGINE READY';
   }
 
   async function startCamera() {
     if ('speechSynthesis' in window) {
-      const unlockUtterance = new SpeechSynthesisUtterance('Ladies and gentlemen, biometric baritone system online.');
-      const v = selectDeepMaleVoice();
+      const unlockUtterance = new SpeechSynthesisUtterance('Real-time expression scanner active.');
+      const v = selectCrispMaleVoice();
       if (v) unlockUtterance.voice = v;
-      unlockUtterance.pitch = 0.62;
-      unlockUtterance.rate = 0.86;
+      unlockUtterance.pitch = 0.90;
+      unlockUtterance.rate = 1.14;
       window.speechSynthesis.speak(unlockUtterance);
     }
 
@@ -697,9 +766,7 @@
             busy = true;
             try {
               await faceMeshEngine.send({ image: video });
-            } catch (err) {
-              sysStatus.innerText = 'FRAME RETRY...';
-            }
+            } catch (err) {}
             busy = false;
           }
           requestAnimationFrame(processLoop);
